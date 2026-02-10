@@ -100,7 +100,7 @@ else
 
     # Validate before restarting — prevents lockout
     if sshd -t; then
-        systemctl restart sshd
+        systemctl restart ssh
         ok "SSH hardened and restarted"
     else
         rm -f "${SSHD_DROPIN}"
@@ -161,19 +161,26 @@ else
     ok "Generated deploy key"
 fi
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Add this public key as a GitHub deploy key (with write access):"
-echo "  https://github.com/jumpingDolphin/gladys/settings/keys"
-echo ""
-cat "${DEPLOY_KEY}.pub"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-read -rp "Press Enter after adding the deploy key to GitHub... "
+# Only prompt for deploy key if repo hasn't been cloned yet
+if [[ ! -d "${REPO_DIR}/.git" ]]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Add this public key as a GitHub deploy key (with write access):"
+    echo "  https://github.com/jumpingDolphin/gladys/settings/keys"
+    echo ""
+    cat "${DEPLOY_KEY}.pub"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    read -rp "Press Enter after adding the deploy key to GitHub... "
+fi
 
-# Add GitHub to known_hosts
-sudo -u "${USERNAME}" bash -c "ssh-keyscan -t ed25519 github.com >> ${USER_SSH_DIR}/known_hosts 2>/dev/null"
-ok "Added github.com to known_hosts"
+# Add GitHub to known_hosts (idempotent — grep before appending)
+if ! grep -q "github.com" "${USER_SSH_DIR}/known_hosts" 2>/dev/null; then
+    sudo -u "${USERNAME}" bash -c "ssh-keyscan -t ed25519 github.com >> ${USER_SSH_DIR}/known_hosts 2>/dev/null"
+    ok "Added github.com to known_hosts"
+else
+    ok "github.com already in known_hosts"
+fi
 
 # ── 10. Clone repo ──────────────────────────────────────────────────
 info "Cloning repository"
@@ -238,9 +245,6 @@ ok "Permissions set: repo dir 700, .env 600"
 # ── 14. Install systemd service ─────────────────────────────────────
 info "Installing systemd user service"
 
-# Enable lingering so user services run without active login
-loginctl enable-linger "${USERNAME}"
-
 SERVICE_DIR="/home/${USERNAME}/.config/systemd/user"
 SERVICE_FILE="${SERVICE_DIR}/openclaw-gateway.service"
 
@@ -272,13 +276,26 @@ EOF
 
 chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config"
 
-# Enable the service (as the user)
-sudo -u "${USERNAME}" XDG_RUNTIME_DIR="/run/user/$(id -u "${USERNAME}")" \
-    systemctl --user daemon-reload
-sudo -u "${USERNAME}" XDG_RUNTIME_DIR="/run/user/$(id -u "${USERNAME}")" \
-    systemctl --user enable openclaw-gateway.service
+# Enable lingering so user services run without active login
+loginctl enable-linger "${USERNAME}"
 
-ok "Systemd service installed and enabled (not started — fill .env first)"
+# Enable the service (as the user)
+# The user's D-Bus session may not exist yet (first provision), so try
+# machinectl shell first, then fall back to advising manual enable.
+USER_UID="$(id -u "${USERNAME}")"
+RUNTIME_DIR="/run/user/${USER_UID}"
+
+if [[ -S "${RUNTIME_DIR}/bus" ]]; then
+    sudo -u "${USERNAME}" XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
+        systemctl --user daemon-reload
+    sudo -u "${USERNAME}" XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
+        systemctl --user enable openclaw-gateway.service
+    ok "Systemd service installed and enabled (not started — fill .env first)"
+else
+    ok "Systemd service file installed"
+    warn "User session not available — after first login as ${USERNAME}, run:"
+    warn "  systemctl --user daemon-reload && systemctl --user enable openclaw-gateway.service"
+fi
 
 # ── 15. Next steps ──────────────────────────────────────────────────
 echo ""

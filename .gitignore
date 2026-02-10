@@ -1,0 +1,9 @@
+.env
+openclaw/credentials/
+openclaw/agents/*/sessions/
+openclaw/**/*.sqlite
+openclaw/sandboxes/
+openclaw/extensions/
+.DS_Store
+*.swp
+*~

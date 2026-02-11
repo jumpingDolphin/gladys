@@ -1,7 +1,7 @@
 # Backup & Restore
 
 > Strategy for backing up Gladys/OpenClaw state beyond what git tracks.
-> Companion to [`README.md`](README.md).
+> Companion to [`ROADMAP.md`](ROADMAP.md).
 
 ## What's where
 

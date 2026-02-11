@@ -1,7 +1,7 @@
 # Security Roadmap
 
 > Prioritized security hardening checklist for the Gladys/OpenClaw deployment.
-> Companion to [`README.md`](README.md).
+> Companion to [`ROADMAP.md`](ROADMAP.md).
 
 ---
 
@@ -87,4 +87,4 @@ After P0 hardening (2026-02-11):
 
 - [OpenClaw Security Docs](https://docs.openclaw.ai/gateway/security)
 - [Security Patterns (runbook)](https://github.com/digitalknk/openclaw-runbook/blob/main/examples/security-patterns.md)
-- [`README.md`](README.md)
+- [`ROADMAP.md`](ROADMAP.md)

@@ -14,7 +14,15 @@ BACKUP_FILE="$BACKUP_DIR/gladys-backup-$TIMESTAMP.tar.gz.enc"
 # Create backup directory if it doesn't exist
 mkdir -p "$BACKUP_DIR"
 
-# Require BACKUP_PASSPHRASE env var (set in openclaw/.env)
+# Source .env if BACKUP_PASSPHRASE not already set
+if [ -z "$BACKUP_PASSPHRASE" ]; then
+    ENV_FILE="/home/simon/gladys/openclaw/.env"
+    if [ -f "$ENV_FILE" ]; then
+        export $(grep -v '^#' "$ENV_FILE" | grep BACKUP_PASSPHRASE | xargs)
+    fi
+fi
+
+# Require BACKUP_PASSPHRASE
 if [ -z "$BACKUP_PASSPHRASE" ]; then
     echo "Error: BACKUP_PASSPHRASE not set. Add it to openclaw/.env" >&2
     exit 1

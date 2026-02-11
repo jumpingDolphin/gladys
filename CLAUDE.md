@@ -77,6 +77,7 @@ Secrets are centralized in `openclaw/.env` (chmod 600), loaded via `${VAR}` subs
 | Secret type | Location | Managed by |
 |-------------|----------|------------|
 | API keys (gateway, Telegram, Brave, Notion, OpenAI, Google Maps, Todoist) | `openclaw/.env` | Manual edit + gateway restart |
+| Backup passphrase | `openclaw/.env` (`BACKUP_PASSPHRASE`) | Manual edit + gateway restart |
 | Model keys (Anthropic, Gemini) | `openclaw/agents/main/agent/auth-profiles.json` | `openclaw models auth` |
 | Google OAuth (client creds + tokens) | `openclaw/workspace/google_credentials.json`, `google_token.json` | Google OAuth flow |
 | Device identity | `openclaw/identity/`, `openclaw/devices/` | OpenClaw internal |
@@ -136,11 +137,11 @@ When configuration changes are needed:
 
 ## Current Priorities
 
-See `roadmap.md` for the full priority-based roadmap. Top items:
+See `openclaw/workspace/roadmap/` for the full priority-based roadmap. Top items:
 
-1. Security hardening (P1 items remaining) → `.roadmap/security.md`
-2. Cost monitoring & guardrails → `.roadmap/cost-control.md`
-3. Backup & restore (Google Drive) → `.roadmap/backup.md`
+1. Security hardening (P1 items remaining) → `openclaw/workspace/roadmap/security.md`
+2. Cost monitoring & guardrails → `openclaw/workspace/roadmap/cost-control.md`
+3. Backup & restore (Google Drive) → `openclaw/workspace/roadmap/backup.md`
 4. Document skills & tools
 
 ## Git Conventions
@@ -166,8 +167,7 @@ See `roadmap.md` for the full priority-based roadmap. Top items:
 
 | File | Purpose |
 |------|---------|
-| `roadmap.md` | Priority-based roadmap (priorities, integrations, open decisions) |
-| `.roadmap/` | Detailed planning docs (security, cost control, backup, daily brief, integrations) |
+| `openclaw/workspace/roadmap/` | Roadmap index + detailed planning docs (security, cost control, backup, daily brief, integrations) |
 | `.env.example` | Secrets template + map of all secret file locations |
 | `.gitignore` | Organized inventory: secrets, runtime state, workspace (with comments) |
 | `scripts/setup.sh` | VPS bootstrap script (idempotent) |

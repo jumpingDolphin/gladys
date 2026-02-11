@@ -15,6 +15,7 @@ openclaw/workspace/skills/*/config.env
 .env
 openclaw/openclaw.json.bak
 openclaw/*.json.bak.*
+openclaw/workspace/.backup-passphrase
 
 # === OpenClaw runtime state ===
 openclaw/openclaw.json

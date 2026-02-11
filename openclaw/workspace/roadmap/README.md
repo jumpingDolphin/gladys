@@ -2,16 +2,26 @@
 
 ## High Priority
 
-1. **Security hardening** — restrict DM policy, remove wildcard allowlists, systemd hardening, tool policies → [`.roadmap/security.md`](.roadmap/security.md)
-2. **Cost monitoring & guardrails** — API quota tracking, spend alerts, model routing optimization → [`.roadmap/cost-control.md`](.roadmap/cost-control.md)
-3. **Backup & restore** — differential backup of `openclaw/` to Google Drive (15 GB free on bot account) → [`.roadmap/backup.md`](.roadmap/backup.md)
+1. **Security hardening** — restrict DM policy, remove wildcard allowlists, systemd hardening, tool policies → [`security.md`](security.md)
+2. **Cost monitoring & guardrails** — API quota tracking, spend alerts, model routing optimization → [`cost-control.md`](cost-control.md)
+3. **Backup & restore** — differential backup of `openclaw/` to Google Drive (15 GB free on bot account) → [`backup.md`](backup.md)
 4. ~~**Secrets management**~~ — **Done.** Secrets in `openclaw/.env` with `${VAR}` substitution; `.gitignore` organized with secrets map; gitleaks clean on git history
 5. **Evaluate OpenRouter** — model routing alternative for cost/flexibility
 6. **Document skills & tools** — audit available but unconfigured skills (`openclaw skills list`), document active ones
 
 ## Medium Priority
 
-- **Daily brief** — morning Telegram summary (tasks, yesterday recap, Swiss news) → [`.roadmap/daily-brief.md`](.roadmap/daily-brief.md)
+- **Daily brief** — morning Telegram summary (tasks, yesterday recap, Swiss news) → [`daily-brief.md`](daily-brief.md)
+
+## Low Priority
+
+### Restic Backups
+**Status:** Documented, not implemented
+**Why:** Space-efficient incremental backups via deduplication
+**Current:** Full tar backups every 2 days (~32MB, works fine)
+**With restic:** Only upload changed data, snapshot-based restore, better for frequent backups
+**Setup:** Install restic, configure rclone for Google Drive backend, migrate from tar script
+**Worth it when:** Workspace grows significantly (100MB+) or backup frequency increases
 
 ## Integrations
 
@@ -36,7 +46,7 @@
 
 | # | Decision | Status |
 |---|----------|--------|
-| 1 | ~~Media backup strategy~~ | **Decided:** Google Drive differential backup (see `.roadmap/backup.md`) |
+| 1 | ~~Media backup strategy~~ | **Decided:** Google Drive differential backup (see [`backup.md`](backup.md)) |
 | 2 | Tool exec policy | Deny `exec` globally vs. allow for trusted agent only |
 | 3 | OpenRouter evaluation | Pending — assess cost savings and model routing benefits |
 
@@ -45,3 +55,15 @@
 1. **No silent side effects** — every action the agent takes is reported back.
 2. **Clear separation** — models by capability, state vs. memory, local vs. deployed.
 3. **Context survives across days.**
+
+---
+
+## Completed
+
+### Encrypted Backups to Google Drive
+**Completed:** 2026-02-11
+Full encrypted tar backups every 2 days, uploaded to Google Drive, automated via cron.
+
+### Credentials Audit
+**Completed:** 2026-02-11
+Verified all API keys and OAuth tokens after .env reorganization.

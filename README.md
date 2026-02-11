@@ -18,8 +18,6 @@ See `roadmap.md` for full details, architecture, and validation criteria.
 
 ```
 ~/gladys/                              # git repo
-├── .env.example                       # secret template (no values)
-├── .env                               # actual secrets (gitignored)
 ├── .gitignore
 ├── README.md
 ├── CLAUDE.md                          # Claude Code project instructions
@@ -70,28 +68,23 @@ See `roadmap.md` for full details, architecture, and validation criteria.
    ssh simon@gladys.simonschenker.com
    ```
 
-5. **Fill in API keys:**
-   ```
-   nano ~/gladys/.env
-   ```
-
-6. **Run the OpenClaw onboard wizard** (do NOT use `--install-daemon` — the systemd unit is already installed by `setup.sh`):
+5. **Run the OpenClaw onboard wizard** (do NOT use `--install-daemon` — the systemd unit is already installed by `setup.sh`):
    ```
    openclaw onboard
    ```
 
-7. **Review and commit the generated config:**
+6. **Review and commit the generated config:**
    ```
    git add openclaw/ && git diff --cached
    git commit -m "Add OpenClaw config via wizard"
    ```
 
-8. **Start the gateway:**
+7. **Start the gateway:**
    ```
    systemctl --user start openclaw-gateway
    ```
 
-9. **Verify:**
+8. **Verify:**
    ```
    openclaw doctor
    systemctl --user status openclaw-gateway

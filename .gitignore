@@ -1,9 +1,69 @@
+# === Secrets ===
+# Central env file (all ${VAR}-substituted secrets)
+openclaw/.env
+# Model API keys — Anthropic, Gemini (managed by `openclaw models auth`)
+openclaw/agents/*/agent/auth-profiles.json
+# Google OAuth client credentials + token/refresh
+openclaw/workspace/google_credentials.json
+openclaw/workspace/google_token.json
+# Device identity + pairing keys
+openclaw/identity/
+openclaw/devices/
+# Skill-level config with tokens
+openclaw/workspace/skills/*/config.env
+# Legacy (deleted, but block re-creation)
 .env
+openclaw/openclaw.json.bak
+openclaw/*.json.bak.*
+
+# === OpenClaw runtime state ===
+openclaw/openclaw.json
 openclaw/credentials/
 openclaw/agents/*/sessions/
 openclaw/**/*.sqlite
 openclaw/sandboxes/
 openclaw/extensions/
+openclaw/canvas/
+openclaw/completions/
+openclaw/cron/
+openclaw/telegram/
+openclaw/media/
+openclaw/update-check.json
+openclaw/logs/
+
+# === Workspace: runtime / generated (backed up to Google Drive, not git) ===
+# Daily memory and agent recall
+openclaw/workspace/memory/
+# Generated output (images, HTML galleries)
+openclaw/workspace/out/
+# Data files uploaded via Telegram
+openclaw/workspace/*.csv
+# One-off utility scripts (not part of agent definition)
+openclaw/workspace/analyze_goodreads.py
+openclaw/workspace/reauth_google.py
+openclaw/workspace/list_calendars.py
+# Python bytecode
+__pycache__/
+
+# === Workspace: tracked in git (agent definition) ===
+# The following ARE committed and define the agent:
+#   openclaw/workspace/IDENTITY.md    — agent identity
+#   openclaw/workspace/SOUL.md        — agent personality
+#   openclaw/workspace/AGENTS.md      — multi-agent config
+#   openclaw/workspace/HEARTBEAT.md   — heartbeat schedule
+#   openclaw/workspace/TOOLS.md       — environment-specific tool notes
+#   openclaw/workspace/MEMORY.md      — durable agent memory
+#   openclaw/workspace/USER.md        — user profile
+#   openclaw/workspace/CONTACTS.md    — contact directory
+#   openclaw/workspace/openclaw-resources.md
+#   openclaw/workspace/notion_databases.md
+#   openclaw/workspace/skills/*/SKILL.md       — skill definitions
+#   openclaw/workspace/skills/*/scripts/       — skill code
+#   openclaw/workspace/skills/*/references/    — skill docs
+#   openclaw/workspace/scripts/                — agent scripts
+
+# === Editor / OS ===
 .DS_Store
 *.swp
 *~
+.venv/

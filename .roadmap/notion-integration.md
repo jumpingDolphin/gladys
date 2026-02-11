@@ -45,11 +45,9 @@ Usage examples the agent handles automatically:
 - "What's on my task list?" &rarr; query Tasks database, return results
 - "Mark 'buy groceries' as done" &rarr; update Status property
 
-## 5. Env Vars
+## 5. Credentials
 
-```
-NOTION_API_TOKEN=ntn_...
-```
+`NOTION_API_KEY` in `openclaw/.env`, referenced as `${NOTION_API_KEY}` in `openclaw.json`.
 
 ## 6. Recommendation
 

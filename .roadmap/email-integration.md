@@ -1,5 +1,7 @@
 # Email & Google Integration
 
+> **Status:** Gmail, Drive, and Docs are now working via OAuth (Feb 2026). The `gog` skill is installed and configured.
+
 ## 1. Account
 
 - `simons.gladys.bot@gmail.com` — dedicated Gladys Google account
@@ -45,14 +47,13 @@
 - Share target Docs/Drive folders with `simons.gladys.bot@gmail.com`
 - The **gog skill** covers this too (Gmail + Drive + Docs unified)
 
-## 5. Env Vars
+## 5. Credentials
 
-```
-GOOGLE_CLIENT_ID=...apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=...
-```
+OAuth credentials managed as files (not env vars):
+- `openclaw/workspace/google_credentials.json` — OAuth client ID + secret
+- `openclaw/workspace/google_token.json` — access token + refresh token (auto-refreshed)
 
 ## 6. Recommendation
 
-- Use the **gog skill** for unified Gmail + Drive + Docs access through one OAuth flow
+- ~~Use the **gog skill** for unified Gmail + Drive + Docs access through one OAuth flow~~ **Done** — gog skill installed and working.
 - Add email as a channel later if bidirectional email chat is wanted

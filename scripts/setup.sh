@@ -141,13 +141,42 @@ else
 fi
 
 # ── 8. Install Claude Code ──────────────────────────────────────────
-info "Installing Claude Code"
+info "Installing Claude Code (native installer)"
 
-if command -v claude &>/dev/null; then
-    ok "Claude Code already installed: $(claude --version 2>/dev/null || echo 'version unknown')"
+if sudo -u "${USERNAME}" bash -c 'command -v claude' &>/dev/null; then
+    ok "Claude Code already installed: $(sudo -u "${USERNAME}" bash -c 'claude --version' 2>/dev/null || echo 'version unknown')"
 else
-    npm install -g @anthropic-ai/claude-code
-    ok "Installed Claude Code"
+    sudo -u "${USERNAME}" bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
+    ok "Installed Claude Code (native)"
+fi
+
+# ── 8.5. Install uv (Python package manager) ──────────────────────────
+info "Installing uv"
+
+if sudo -u "${USERNAME}" bash -c 'command -v uv' &>/dev/null; then
+    ok "uv already installed: $(sudo -u "${USERNAME}" bash -c 'uv --version' 2>/dev/null || echo 'version unknown')"
+else
+    sudo -u "${USERNAME}" bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+    ok "Installed uv"
+fi
+
+# ── 8.6. Create Python venv + install deps ───────────────────────────
+info "Setting up Python virtual environment"
+
+VENV_DIR="${REPO_DIR}/.venv"
+if [[ -d "${VENV_DIR}" ]]; then
+    ok "Virtual environment already exists"
+else
+    sudo -u "${USERNAME}" bash -c "export PATH=\$HOME/.local/bin:\$PATH && uv venv ${VENV_DIR}"
+    ok "Created virtual environment at ${VENV_DIR}"
+fi
+
+# Always run install to pick up requirements.txt changes
+if [[ -f "${REPO_DIR}/requirements.txt" ]]; then
+    sudo -u "${USERNAME}" bash -c "export PATH=\$HOME/.local/bin:\$PATH && uv pip install --python ${VENV_DIR}/bin/python -r ${REPO_DIR}/requirements.txt"
+    ok "Python dependencies installed"
+else
+    warn "No requirements.txt found — skipping Python dependency install"
 fi
 
 # ── 9. Generate SSH deploy key ──────────────────────────────────────
@@ -193,26 +222,7 @@ else
     ok "Cloned repository to ${REPO_DIR}"
 fi
 
-# ── 11. Create .env ─────────────────────────────────────────────────
-info "Setting up .env"
-
-ENV_FILE="${REPO_DIR}/.env"
-ENV_EXAMPLE="${REPO_DIR}/.env.example"
-
-if [[ -f "${ENV_FILE}" ]]; then
-    ok ".env already exists — not overwriting"
-else
-    if [[ -f "${ENV_EXAMPLE}" ]]; then
-        cp "${ENV_EXAMPLE}" "${ENV_FILE}"
-        chown "${USERNAME}:${USERNAME}" "${ENV_FILE}"
-        chmod 600 "${ENV_FILE}"
-        ok "Created .env from .env.example"
-    else
-        warn ".env.example not found in repo — create .env manually"
-    fi
-fi
-
-# ── 12. Configure user environment ──────────────────────────────────
+# ── 11. Configure user environment ──────────────────────────────────
 info "Configuring user environment"
 
 BASHRC="/home/${USERNAME}/.bashrc"
@@ -224,25 +234,21 @@ else
     cat >> "${BASHRC}" << 'BASHRC_BLOCK'
 
 # Gladys environment
+export PATH="$HOME/.local/bin:$PATH"
 export OPENCLAW_STATE_DIR=~/gladys/openclaw
-if [[ -f ~/gladys/.env ]]; then
-    set -a
-    source ~/gladys/.env
-    set +a
-fi
+source ~/gladys/.venv/bin/activate 2>/dev/null || true
 BASHRC_BLOCK
     ok "Added Gladys environment to .bashrc"
 fi
 
-# ── 13. Set permissions ─────────────────────────────────────────────
+# ── 12. Set permissions ─────────────────────────────────────────────
 info "Setting file permissions"
 
 chown -R "${USERNAME}:${USERNAME}" "${REPO_DIR}"
 chmod 700 "${REPO_DIR}"
-[[ -f "${REPO_DIR}/.env" ]] && chmod 600 "${REPO_DIR}/.env"
-ok "Permissions set: repo dir 700, .env 600"
+ok "Permissions set: repo dir 700"
 
-# ── 14. Install systemd service ─────────────────────────────────────
+# ── 13. Install systemd service ─────────────────────────────────────
 info "Installing systemd user service"
 
 SERVICE_DIR="/home/${USERNAME}/.config/systemd/user"
@@ -261,8 +267,8 @@ Type=simple
 ExecStart=$(command -v openclaw) gateway start
 Restart=on-failure
 RestartSec=5
-EnvironmentFile=${REPO_DIR}/.env
 Environment=OPENCLAW_STATE_DIR=${REPO_DIR}/openclaw
+Environment=OPENCLAW_DISABLE_BONJOUR=1
 
 # Security hardening
 NoNewPrivileges=true
@@ -290,14 +296,14 @@ if [[ -S "${RUNTIME_DIR}/bus" ]]; then
         systemctl --user daemon-reload
     sudo -u "${USERNAME}" XDG_RUNTIME_DIR="${RUNTIME_DIR}" \
         systemctl --user enable openclaw-gateway.service
-    ok "Systemd service installed and enabled (not started — fill .env first)"
+    ok "Systemd service installed and enabled (not started — run openclaw onboard first)"
 else
     ok "Systemd service file installed"
     warn "User session not available — after first login as ${USERNAME}, run:"
     warn "  systemctl --user daemon-reload && systemctl --user enable openclaw-gateway.service"
 fi
 
-# ── 15. Next steps ──────────────────────────────────────────────────
+# ── 14. Next steps ──────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  Setup complete! Next steps:"
@@ -305,19 +311,16 @@ echo ""
 echo "  1. Log in as ${USERNAME}:"
 echo "     ssh ${USERNAME}@gladys.simonschenker.com"
 echo ""
-echo "  2. Fill in your API keys:"
-echo "     nano ${REPO_DIR}/.env"
-echo ""
-echo "  3. Run the OpenClaw onboard wizard (do NOT use --install-daemon):"
+echo "  2. Run the OpenClaw onboard wizard (do NOT use --install-daemon):"
 echo "     openclaw onboard"
 echo ""
-echo "  4. Review and commit the generated config:"
+echo "  3. Review and commit the generated config:"
 echo "     git add openclaw/ && git diff --cached && git commit -m 'Add OpenClaw config via wizard'"
 echo ""
-echo "  5. Start the gateway:"
+echo "  4. Start the gateway:"
 echo "     systemctl --user start openclaw-gateway"
 echo ""
-echo "  6. Verify everything works:"
+echo "  5. Verify everything works:"
 echo "     openclaw doctor"
 echo "     systemctl --user status openclaw-gateway"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

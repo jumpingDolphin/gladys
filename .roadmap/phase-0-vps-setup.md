@@ -1,5 +1,7 @@
 # Phase 0 — VPS Bootstrap Setup
 
+**Status: COMPLETE**
+
 ## Context
 
 Phase 0 of the Gladys roadmap requires a bootstrap script to provision a fresh Hetzner VPS.
@@ -14,7 +16,7 @@ Write the script locally, commit, push, then clone on the VPS and run it.
 |------|---------|
 | `scripts/setup.sh` | VPS bootstrap script (run as root on fresh Ubuntu) |
 | `.gitignore` | Exclude secrets, sessions, SQLite, sandboxes, extensions |
-| `.env.example` | Secret template with all env vars, no values |
+| `.env.example` | Reference for required API keys (secrets managed by OpenClaw) |
 | `README.md` | Project overview and Phase 0 setup instructions |
 
 ## setup.sh Steps
@@ -29,11 +31,10 @@ Write the script locally, commit, push, then clone on the VPS and run it.
 8. **Install Claude Code** — `npm install -g @anthropic-ai/claude-code`
 9. **Generate SSH deploy key** — pause for user to add as GitHub deploy key
 10. **Clone repo** — via SSH to `/home/simon/gladys`
-11. **Create `.env`** — copy from `.env.example`
-12. **Configure user environment** — `.bashrc` sourcing (`OPENCLAW_STATE_DIR=~/gladys/openclaw`)
-13. **Set permissions** — repo dir 700, .env 600
-14. **Install systemd service** — user-level unit, enable but don't start
-15. **Print next steps** — fill `.env`, run `openclaw onboard`, commit config, start service
+11. **Configure user environment** — `.bashrc` sourcing (`OPENCLAW_STATE_DIR=~/gladys/openclaw`)
+12. **Set permissions** — repo dir 700
+13. **Install systemd service** — user-level unit, enable but don't start
+14. **Print next steps** — run `openclaw onboard`, commit config, start service
 
 ## Security
 
@@ -41,14 +42,14 @@ Write the script locally, commit, push, then clone on the VPS and run it.
 - UFW: limit 22/tcp, deny all other inbound
 - Gateway: loopback bind, token auth, mDNS off
 - Systemd: NoNewPrivileges, PrivateTmp, ProtectSystem=strict
-- File permissions: state dir 700, .env 600
+- File permissions: state dir 700
 
 ## Verification
 
 1. `ssh simon@gladys.simonschenker.com` works, `ssh root@...` rejected
 2. `ufw status` shows only SSH rate-limited
 3. `node --version` → v22.x, `openclaw --version`, `claude --version` installed
-4. `/home/simon/gladys/` contains repo with `.env`
+4. `/home/simon/gladys/` contains repo
 5. `git -C /home/simon/gladys remote -v` shows SSH remote
 6. `systemctl --user status openclaw-gateway` shows enabled (inactive)
-7. After filling `.env` and running `openclaw onboard`: `systemctl --user start openclaw-gateway` works
+7. After running `openclaw onboard`: `systemctl --user start openclaw-gateway` works

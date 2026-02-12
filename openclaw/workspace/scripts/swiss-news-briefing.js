@@ -2,6 +2,8 @@
 /**
  * Swiss News Briefing - Echo der Zeit + RTS Le 12h30
  * Runs daily at 8:30 AM CET
+ * Fetches yesterday's Echo der Zeit (since it airs in the evening)
+ * and today's Le 12h30
  * Sends formatted briefing to Telegram
  */
 
@@ -69,35 +71,76 @@ async function main() {
   try {
     console.log('📰 Fetching Swiss news briefing...\n');
     
-    // Fetch Echo der Zeit
-    const edzXML = await fetchURL('https://www.srf.ch/feed/podcast/sd/28549e81-c453-4671-92ad-cb28796d06a8.xml');
-    const edzEpisodes = parseRSS(edzXML);
+    // Get yesterday's date (since Echo der Zeit airs in the evening)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
     
-    if (edzEpisodes.length === 0) {
+    console.log(`Looking for Echo der Zeit from ${yesterdayStr}\n`);
+    
+    // Fetch Echo der Zeit RSS (fetches multiple episodes for parsing)
+    const edzXML = await fetchURL('https://www.srf.ch/feed/podcast/sd/28549e81-c453-4671-92ad-cb28796d06a8.xml');
+    
+    // Parse all items (we need to check multiple in case latest is a placeholder)
+    const allItems = [];
+    const itemMatches = edzXML.match(/<item>[\s\S]*?<\/item>/g) || [];
+    
+    for (const item of itemMatches.slice(0, 5)) { // Check first 5 episodes
+      const title = (item.match(/<itunes:title>(.*?)<\/itunes:title>/) || 
+                    item.match(/<title>(.*?)<\/title>/))?.[1] || '';
+      const link = item.match(/<link>(.*?)<\/link>/)?.[1] || '';
+      const summaryMatch = item.match(/<itunes:summary><!\[CDATA\[([\s\S]*?)\]\]><\/itunes:summary>/);
+      const description = summaryMatch ? summaryMatch[1] : 
+                         (item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/) || 
+                          item.match(/<description>(.*?)<\/description>/))?.[1] || '';
+      const guid = item.match(/<guid[^>]*>(.*?)<\/guid>/)?.[1] || '';
+      const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '';
+      
+      allItems.push({ title, link, description, guid, pubDate });
+    }
+    
+    if (allItems.length === 0) {
       throw new Error('No Echo der Zeit episodes found');
     }
     
-    const edzEpisode = edzEpisodes[0];
-    console.log(`🇩🇪 Echo der Zeit: ${edzEpisode.title}`);
+    // Find the first episode with actual content (segments)
+    let edzEpisode = null;
+    let segments = [];
     
-    // Parse segments from description (they're in the RSS description!)
-    const segments = [];
-    const alleThemenMatch = edzEpisode.description.match(/Alle Themen:\s*([\s\S]+)$/);
-    
-    if (alleThemenMatch) {
-      const themenText = alleThemenMatch[1];
-      const lines = themenText.split(/\r?\n/);
+    for (const episode of allItems) {
+      // Try to parse segments from description
+      const alleThemenMatch = episode.description.match(/Alle Themen:\s*([\s\S]+)$/);
       
-      for (const line of lines) {
-        const match = line.match(/\((\d{2}:\d{2})\)\s*(.+)/);
-        if (match) {
-          const [, timestamp, title] = match;
-          if (!title.includes('Intro') && !title.includes('Nachrichtenübersicht')) {
-            segments.push({ timestamp, title: title.trim() });
+      if (alleThemenMatch) {
+        const themenText = alleThemenMatch[1];
+        const lines = themenText.split(/\r?\n/);
+        const tempSegments = [];
+        
+        for (const line of lines) {
+          const match = line.match(/\((\d{2}:\d{2})\)\s*(.+)/);
+          if (match) {
+            const [, timestamp, title] = match;
+            if (!title.includes('Intro') && !title.includes('Nachrichtenübersicht')) {
+              tempSegments.push({ timestamp, title: title.trim() });
+            }
           }
+        }
+        
+        // If we found segments, use this episode
+        if (tempSegments.length > 0) {
+          edzEpisode = episode;
+          segments = tempSegments;
+          break;
         }
       }
     }
+    
+    if (!edzEpisode || segments.length === 0) {
+      throw new Error('No Echo der Zeit episodes with segments found');
+    }
+    
+    console.log(`🇩🇪 Echo der Zeit: ${edzEpisode.title}`);
+    console.log(`   Published: ${edzEpisode.pubDate}`);
     
     console.log(`  Found ${segments.length} segments`);
     segments.slice(0, 5).forEach(s => console.log(`   - ${s.timestamp}: ${s.title}`));

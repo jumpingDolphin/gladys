@@ -47,20 +47,39 @@ Skills define _how_ tools work. This file is for _your_ specifics — the stuff 
 
 ## Todoist
 
+**API Version:** v1 (migrated from deprecated v2 on 2026-02-12)
+- **Endpoint:** `https://api.todoist.com/api/v1/sync`
+- **Method:** POST with `commands` array
+- All IDs changed during migration (old v2 IDs no longer work)
+
 **Personal Todoist (Simon's):**
 - Token: `${TODOIST_PERSONAL_TOKEN}` (in openclaw/.env)
-- Default project: Inbox (ID: 2367060676)
+- Default project: Inbox (ID: `6fxjfC8p5mX2mWGW`)
 - Labels: `#shopping`, `#amazon`, `#groceries`, `#errands`, `#work`, `#personal`
+- Projects:
+  - Inbox: `6fxjfC8p5mX2mWGW`
+  - Shopping: `6fxm5M23qmp9VVHQ`
+  - Entertainment: `6fxm5M4RMGHXH9mR`
+  - Family & Friends: `6fxm5M82CPxc3xJW`
+  - Tech & Work: `6fxm5M9JxM9FHxfP`
+  - Tasks: `6fxm5MHv6f32X9gx`
 
 **Gladys Workspace (Task Tracking):**
 - Token: `${TODOIST_WORKSPACE_TOKEN}` (in openclaw/.env)
-- Project: Gladys workspace (ID: 2367060736)
+- Project: Gladys workspace (ID: `6fxjfVH63x9xg5G7`)
 - Config: `skills/todoist-task-manager/config.env`
 
 **Strategy:**
 - Simon's todos → Personal Todoist
 - Gladys's task tracking → Gladys Workspace
 - Keep them in sync, no duplication
+
+**Example command (add task):**
+```bash
+curl -s "https://api.todoist.com/api/v1/sync" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d 'commands=[{"type":"item_add","temp_id":"'$(uuidgen)'","uuid":"'$(uuidgen)'","args":{"content":"Task text","project_id":"PROJECT_ID"}}]'
+```
 
 ## What Goes Here
 

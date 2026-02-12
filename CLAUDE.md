@@ -29,23 +29,21 @@ For the full OpenClaw ecosystem (skills, plugins, community projects, deployment
 ## Architecture
 
 ```
-Telegram (text/voice)
-        |
-        v
- OpenClaw Gateway (port 18789, loopback only, token auth)
-        |
-        |-- Channel layer: Telegram adapter
-        |     \-- Whisper STT (voice -> text)
-        |
-        |-- Agent: Claude Sonnet 4.5 (primary reasoning)
-        |     |-- Todoist skill (tasks)
-        |     |-- Notion skill (databases, projects)
-        |     |-- Google skill (Docs, Drive, Gmail, Calendar, Sheets, Places)
-        |     |-- Web search (Brave)
-        |     \-- Image generation (OpenAI DALL-E)
-        |
+Telegram Bot 1 (Gladys)          Telegram Bot 2 (Transcriber)
+        |                                  |
+        v                                  v
+ OpenClaw Gateway (port 18789, single process, loopback only, token auth)
+        |                                  |
+  Agent: main                        Agent: transcriber
+  Claude Sonnet 4.5                  Claude Sonnet 4.5
+  Full skills + memory               transcribe skill only
+        |                            Whisper STT → clean + enhanced
+        |-- Todoist skill (tasks)
+        |-- Notion skill (databases, projects)
+        |-- Google skill (Docs, Drive, Gmail, Calendar, Sheets, Places)
+        |-- Web search (Brave)
+        |-- Image generation (OpenAI DALL-E)
         |-- Fallback models: Gemini 3 Flash, Deepseek v3.2
-        |
         \-- Memory subsystem
               |-- MEMORY.md (durable facts, curated)
               |-- memory/YYYY-MM-DD.md (daily context, raw)
@@ -76,7 +74,7 @@ Secrets are centralized in `openclaw/.env` (chmod 600), loaded via `${VAR}` subs
 
 | Secret type | Location | Managed by |
 |-------------|----------|------------|
-| API keys (gateway, Telegram, Brave, Notion, OpenAI, Google Maps, Todoist) | `openclaw/.env` | Manual edit + gateway restart |
+| API keys (gateway, Telegram, Telegram Transcriber, Brave, Notion, OpenAI, Google Maps, Todoist) | `openclaw/.env` | Manual edit + gateway restart |
 | Backup passphrase | `openclaw/.env` (`BACKUP_PASSPHRASE`) | Manual edit + gateway restart |
 | Model keys (Anthropic, Gemini) | `openclaw/agents/main/agent/auth-profiles.json` | `openclaw models auth` |
 | Google OAuth (client creds + tokens) | `openclaw/workspace/google_credentials.json`, `google_token.json` | Google OAuth flow |
@@ -134,6 +132,7 @@ When configuration changes are needed:
 | STT backend | **Built-in OpenClaw Whisper** | Handled at the channel layer, no custom setup needed |
 | Primary model | **Claude Sonnet 4.5** with Gemini 3 Flash + Deepseek v3.2 fallbacks | Cost/speed tradeoff; Opus 4.6 unnecessary for most interactions |
 | Secrets strategy | **`openclaw/.env`** with `${VAR}` substitution | Centralized, gitignored, systemd drop-in survives config regeneration |
+| Transcription bot | **Second OpenClaw agent** (Claude Sonnet 4.5) | Dedicated Telegram bot using `transcribe` skill; Whisper STT at channel layer, Sonnet formats output (clean + enhanced) |
 
 ## Current Priorities
 
@@ -175,4 +174,5 @@ See `openclaw/workspace/roadmap/` for the full priority-based roadmap. Top items
 | `openclaw/openclaw.json` | OpenClaw config (uses `${VAR}` refs, gitignored) |
 | `openclaw/.env` | Central secrets file (gitignored, 600 perms) |
 | `openclaw/workspace/` | Agent definition files (see "OpenClaw Workspace Files" above) |
+| `openclaw/workspace-transcriber/` | Transcriber agent workspace (IDENTITY.md + transcribe skill) |
 | `openclaw/workspace/openclaw-resources.md` | OpenClaw ecosystem reference |

@@ -41,6 +41,7 @@
 | Google Sheets | Untested | OAuth configured, not yet validated |
 | Brave Search | Active | Web search |
 | DALL-E (OpenAI) | Active | Image generation |
+| Transcription Bot | Active | Second agent — Claude Sonnet 4.5, dedicated Telegram bot for voice→text (transcribe skill) |
 
 ## Open Decisions
 
@@ -63,6 +64,10 @@
 ### Encrypted Backups to Google Drive
 **Completed:** 2026-02-11
 Full encrypted tar backups every 2 days, uploaded to Google Drive, automated via cron.
+
+### Transcription Bot (Second Agent)
+**Completed:** 2026-02-12
+Dedicated Telegram bot for voice transcription. Second OpenClaw agent using Claude Sonnet 4.5 with the `transcribe` skill — Whisper STT handles audio-to-text at channel layer, Sonnet outputs clean copy-ready text + enhanced reformulation. No memory, no heartbeat.
 
 ### Credentials Audit
 **Completed:** 2026-02-11

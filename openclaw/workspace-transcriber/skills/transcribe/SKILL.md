@@ -1,0 +1,1 @@
+/home/simon/gladys/openclaw/workspace/skills/transcribe/SKILL.md

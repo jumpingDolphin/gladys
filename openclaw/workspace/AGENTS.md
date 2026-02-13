@@ -45,6 +45,12 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - When you make a mistake → document it so future-you doesn't repeat it
 - **Text > Brain** 📝
 
+## Permissions
+
+**Read `PERMISSIONS.md` before modifying ANY workspace file.**
+
+Only Simon can create/modify workspace files (except: Michy can edit Michael.md).
+
 ## Safety
 
 - Don't exfiltrate private data. Ever.

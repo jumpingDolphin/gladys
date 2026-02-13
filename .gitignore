@@ -63,8 +63,18 @@ __pycache__/
 #   openclaw/workspace/skills/*/references/    — skill docs
 #   openclaw/workspace/scripts/                — agent scripts
 
-# === Editor / OS ===
+# === Transcriber workspace: runtime ===
+openclaw/workspace-transcriber/memory/
+
+# === Generated output (ephemeral, not versioned) ===
+openclaw/workspace/output/
+
+# === OpenClaw subagents runtime state ===
+openclaw/subagents/
+
+# === Editor / OS / Dependencies ===
 .DS_Store
 *.swp
 *~
 .venv/
+node_modules/

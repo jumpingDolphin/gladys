@@ -1,94 +1,93 @@
-# Plan: Cost Monitoring for Gladys
+# Plan: Cost Monitoring Skill
 
 ## Context
 
-Gladys uses multiple pay-per-token APIs (Anthropic, Google/Deepseek via OpenRouter, OpenAI for Whisper/DALL-E). There's no visibility into actual spend today — costs grow silently. The roadmap lists this as **#2 priority** but nothing is implemented beyond basic guardrails (concurrency limits, context pruning). Budget target: **$50/month**.
+Gladys uses multiple pay-per-token APIs (Anthropic, Deepseek via OpenRouter, OpenAI for Whisper/DALL-E) with no visibility into actual spend. Budget target: **$50/month**. The session JSONL files already contain per-message cost breakdowns in USD — we just need a skill that lets Gladys parse and report them.
 
-## What Exists Today
+**Approach:** Build a native OpenClaw skill (no external dashboards or tools to install). Gladys can query her own costs on demand and report via Telegram.
 
-| Layer | Status |
-|-------|--------|
-| Concurrency limits (`maxConcurrent: 4`, subagents: 8) | Active |
-| Context pruning (cache-ttl 60m, safeguard compaction) | Active |
-| `/usage` commands (`/usage full`, `/status`) | Available, not enabled |
-| OpenTelemetry support (built into OpenClaw) | Not needed — skip Prometheus/Grafana |
-| Cost Monitor dashboard (parses session JSONL) | Audited safe, not installed |
-| Session JSONL data (8MB across multiple sessions) | Exists, ready to parse |
+## What Already Exists
 
-## Phase 1: Visibility (implement now)
+- **Session JSONL files** (`openclaw/agents/main/sessions/*.jsonl`) — each assistant message includes `usage.cost.total` in USD, plus per-type breakdown (input/output/cacheRead/cacheWrite), provider, and model
+- **8MB of session data** across multiple files, ready to parse
+- **OpenRouter `/api/v1/key`** endpoint — returns credits remaining for the current key (uses existing API key, no admin key needed)
+- **Concurrency limits + context pruning** — already active in `openclaw.json`
+- **Built-in `/usage full`** — per-session runtime toggle, already available
 
-### 1. Install OpenClaw Cost Monitor dashboard
+**Not viable without extra setup:** Anthropic's Usage API requires a separate Admin API key (sk-ant-admin). Not worth it — JSONL already has Anthropic costs.
 
-- Clone `bokonon23/clawdbot-cost-monitor` to `~/gladys/tools/cost-monitor/`
-- `npm install`
-- Configure to read from `~/gladys/openclaw/agents/main/sessions/`
-- Create systemd user service, bind to `127.0.0.1:3939`
-- Enable and start
+## Skill: `cost-monitoring`
 
-**Files created:**
-- `~/.config/systemd/user/cost-monitor.service`
+### Structure
 
-**Verification:** `curl http://localhost:3939` returns dashboard, `systemctl --user status cost-monitor` shows active
+```
+openclaw/workspace/skills/cost-monitoring/
+├── SKILL.md
+└── scripts/
+    └── cost_report.py
+```
 
-### 2. Write `scripts/check-quotas.sh`
+### `scripts/cost_report.py`
 
-Adapt from the [openclaw-runbook example](https://github.com/digitalknk/openclaw-runbook/blob/main/examples/check-quotas.sh). Query API usage endpoints:
+Single Python script that parses session JSONL files and outputs a cost report.
 
-- **Anthropic:** `GET https://api.anthropic.com/v1/usage` (API key from `.env`)
-- **OpenRouter:** `GET https://openrouter.ai/api/v1/auth/key` (returns credits/usage)
-- **OpenAI:** `GET https://api.openai.com/v1/usage` (Whisper + DALL-E)
+**What it does:**
+1. Scans all `*.jsonl` files in `openclaw/agents/main/sessions/`
+2. Extracts `usage.cost.total`, `provider`, `model`, and timestamp from each assistant message
+3. Aggregates by time period (today, this week, this month) and by provider/model
+4. Compares month-to-date spend against $50 budget (configurable via env var or argument)
+5. Outputs a formatted text report suitable for Telegram
 
-Output: today's spend, month-to-date total, per-provider breakdown, % of $50 budget used.
+**Arguments:**
+- `--period today|week|month|all` (default: month)
+- `--budget 50` (default: $50, overridable)
+- `--json` flag for machine-readable output
 
-**File:** `scripts/check-quotas.sh`
+**Output example:**
+```
+Cost Report — February 2026
 
-**Verification:** Run manually, confirm it outputs spend data
+Month-to-date: $12.45 / $50.00 (24.9%)
+Today: $1.82
 
-### 3. Enable `/usage full` for Gladys
+By provider:
+  Anthropic (claude-sonnet-4-5): $11.20
+  OpenRouter (deepseek-v3.2):    $0.85
+  OpenRouter (gemini-3-flash):   $0.40
 
-Add a note to `openclaw/workspace/TOOLS.md` documenting the `/usage` commands so Gladys knows to report costs when asked. (The `/usage full` toggle is a per-session runtime command — Gladys can enable it when a user asks about costs.)
+Budget status: ✓ On track
+```
 
-**File:** `openclaw/workspace/TOOLS.md` (minor addition)
+**Budget alerts** — when Gladys runs this (via heartbeat or on demand), the output includes clear threshold warnings:
+- <50%: "On track"
+- 50-79%: "Halfway through budget"
+- 80-99%: "Approaching budget limit"
+- ≥100%: "Budget exceeded"
 
-## Phase 2: Automated Alerts (implement after Phase 1 is verified)
+### `SKILL.md`
 
-### 4. Systemd timer for daily spend report
+Following the pattern from backup-restore and todoist-task-manager:
+- YAML frontmatter (name, description)
+- Quick start with script path and example usage
+- Describes when to use it (on demand, during heartbeat)
+- Documents output format
 
-- Create `~/.config/systemd/user/check-quotas.timer` — runs `check-quotas.sh` daily at 08:00
-- Script sends summary to Telegram via the gateway API (or writes to a file Gladys reads)
+### Heartbeat integration
 
-**Files created:**
-- `~/.config/systemd/user/check-quotas.service`
-- `~/.config/systemd/user/check-quotas.timer`
+Add a cost check to `openclaw/workspace/HEARTBEAT.md` so Gladys runs the report during her morning routine and proactively warns if spend is high.
 
-### 5. Budget threshold alerts in check-quotas.sh
-
-Add percentage-based thresholds to the script:
-- **50%** ($25): info message to Telegram ("halfway through monthly budget")
-- **80%** ($40): warning ("approaching budget limit")
-- **100%** ($50): alert ("budget exceeded")
-
-Track month-to-date spend in a simple state file (`/tmp/openclaw/spend-state.json`) to avoid duplicate alerts for the same threshold.
-
-### 6. Add cost check to Gladys's heartbeat
-
-Update `openclaw/workspace/HEARTBEAT.md` — add daily cost report to the morning proactive task list so Gladys includes spend in her morning routine.
-
-**File:** `openclaw/workspace/HEARTBEAT.md`
-
-## Housekeeping
-
-- Update `openclaw/workspace/roadmap/cost-control.md` — check off completed items
-- Update `openclaw/workspace/TOOLS.md` — document Cost Monitor dashboard
-
-## Files Summary
+## Files to Create/Edit
 
 | File | Action |
 |------|--------|
-| `scripts/check-quotas.sh` | Create |
-| `~/.config/systemd/user/cost-monitor.service` | Create |
-| `~/.config/systemd/user/check-quotas.service` | Create (Phase 2) |
-| `~/.config/systemd/user/check-quotas.timer` | Create (Phase 2) |
-| `openclaw/workspace/TOOLS.md` | Edit (add cost monitoring docs) |
-| `openclaw/workspace/HEARTBEAT.md` | Edit (add cost check task, Phase 2) |
-| `openclaw/workspace/roadmap/cost-control.md` | Edit (update status) |
+| `openclaw/workspace/skills/cost-monitoring/SKILL.md` | Create |
+| `openclaw/workspace/skills/cost-monitoring/scripts/cost_report.py` | Create |
+| `openclaw/workspace/HEARTBEAT.md` | Edit — add daily cost check |
+| `openclaw/workspace/roadmap/cost-control.md` | Edit — update status |
+
+## Verification
+
+1. Run `python3 openclaw/workspace/skills/cost-monitoring/scripts/cost_report.py` — confirm it outputs spend data from existing sessions
+2. Run with `--period today` and `--json` to verify both modes
+3. Ask Gladys via Telegram "how much have you cost me this month?" — she should use the skill
+4. Check heartbeat picks up the cost check on next cycle

@@ -7,8 +7,7 @@ ENDPOINT=$1
 METHOD=$2
 DATA=$3
 
-# Note: Todoist API v1 uses the /sync endpoint with POST commands
-# This script is deprecated and should be replaced with sync-based calls
+# Todoist REST API v1 - correct endpoint verified 2026-02-13
 if [ -z "$DATA" ]; then
   curl -s -X "$METHOD" "https://api.todoist.com/api/v1/$ENDPOINT" \
     -H "Authorization: Bearer $TODOIST_TOKEN"

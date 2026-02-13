@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Swiss News Briefing - Echo der Zeit + RTS Le 12h30
+ * Swiss News Briefing - Echo der Zeit + RTS Top News
  * Runs daily at 8:30 AM CET
  * Fetches yesterday's Echo der Zeit (since it airs in the evening)
- * and today's Le 12h30
+ * and today's top RTS news articles
  * Sends formatted briefing to Telegram
  */
 
@@ -145,33 +145,50 @@ async function main() {
     console.log(`  Found ${segments.length} segments`);
     segments.slice(0, 5).forEach(s => console.log(`   - ${s.timestamp}: ${s.title}`));
     
-    // Fetch Le 12h30
-    const l12XML = await fetchURL('https://www.rts.ch/la-1ere/programmes/le-12h30/podcast/?flux=rss/podcast');
-    const l12Episodes = parseRSS(l12XML);
+    // Fetch RTS top news articles from RSS
+    console.log('\n🇫🇷 Fetching RTS news...');
+    const rtsXML = await fetchURL('https://www.rts.ch/info/?format=rss/news');
     
-    if (l12Episodes.length === 0) {
-      throw new Error('No Le 12h30 episodes found');
+    // Parse RSS feed
+    const articles = [];
+    const rtsItemMatches = rtsXML.match(/<item>[\s\S]*?<\/item>/g) || [];
+    
+    for (const item of rtsItemMatches.slice(0, 5)) {
+      const titleMatch = item.match(/<title>(.*?)<\/title>/);
+      const linkMatch = item.match(/<link>(.*?)<\/link>/);
+      const categoryMatch = item.match(/<category>(.*?)<\/category>/);
+      
+      if (titleMatch && linkMatch) {
+        const title = titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+        const link = linkMatch[1];
+        const category = categoryMatch ? categoryMatch[1] : null;
+        
+        articles.push({ title, link, category });
+      }
     }
     
-    const l12Episode = l12Episodes[0];
-    console.log(`\n🇫🇷 Le 12h30: ${l12Episode.title}`);
-    console.log(`   ${l12Episode.link}`);
+    console.log(`  Found ${articles.length} articles`);
+    articles.forEach(a => console.log(`   - [${a.category || 'Info'}] ${a.title}`));
     
     // Build Echo der Zeit link from guid
     const edzLink = `https://www.srf.ch/audio/echo-der-zeit?id=${edzEpisode.guid}`;
     
-    // Build Telegram message
+    // Build Telegram message (use <link> to suppress preview)
     let message = `📰 *Swiss News Briefing*\n\n`;
     message += `🇩🇪 *Echo der Zeit*\n`;
     
     segments.slice(0, 6).forEach((seg, i) => {
-      message += `${i + 1}\\. \\[${seg.timestamp}\\] ${seg.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}\n`;
+      message += `• \\[${seg.timestamp}\\] ${seg.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}\n`;
     });
     
-    message += `\n🔗 [Zur Sendung](${edzLink})\n\n`;
-    message += `🇫🇷 *Le 12h30*\n`;
-    message += `${l12Episode.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}\n`;
-    message += `🔗 [Écouter](${l12Episode.link})`;
+    message += `\n<${edzLink}>\n\n`;
+    message += `🇫🇷 *RTS Info*\n`;
+    
+    articles.slice(0, 5).forEach(article => {
+      const category = article.category ? `[${article.category}] ` : '';
+      message += `• ${category}${article.title.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}\n`;
+      message += `  <${article.link}>\n`;
+    });
     
     // Send via OpenClaw message tool (would need to be called from the agent)
     console.log('\n📤 Message prepared:\n');
@@ -181,7 +198,7 @@ async function main() {
     const output = {
       edzEpisode,
       segments: segments.slice(0, 6),
-      l12Episode
+      rtsArticles: articles.slice(0, 5)
     };
     
     console.log('\n' + JSON.stringify(output, null, 2));

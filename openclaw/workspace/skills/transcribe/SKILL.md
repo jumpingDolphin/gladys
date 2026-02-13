@@ -1,15 +1,37 @@
 ---
 name: transcribe
-description: Format dictated messages for sending. Use when user says "transcribe", uses /transcribe command, or requests message cleanup/formatting from audio transcription. Outputs clean copy-ready text and enhanced reformulation.
+description: Format dictated messages for sending. Use when user says "transcribe", uses /transcribe command, or requests message cleanup/formatting from audio transcription. Context-aware: one message in groups, two in private chats.
 ---
 
 # Transcribe
 
 Format dictated messages into polished, send-ready text. Designed for voice-to-text workflows where the user dictates a message and needs it cleaned up for sending.
 
+## Context Detection
+
+Detect whether you're in a **group chat** or **private/direct chat** and adjust behavior accordingly.
+
+**For Telegram:** Group chats have negative chat IDs (e.g., `-5134142498`), while private/direct chats have positive IDs. Check the message header `[Telegram ... id:XXXXX]` to determine context.
+
 ## How It Works
 
-### Initial Transcription
+### In Group Chats
+
+When transcribing in a group, send ONE message using the `message` tool:
+
+**Transcription with style matching (user-specific):**
+- **Start with @mention of sender** (e.g., "@simon: " or "@micha_9898: ")
+- **Michael (Telegram ID: 14423006) ONLY:** Transform transcription using MICHA_STYLE.md:
+  - Use ONLY his documented greetings, emojis, elongations, abbreviations
+  - Match his tone, punctuation patterns, sign-offs
+  - Preserve the core message content but express it how he would write it
+  - **Keep it natural and casual** - not perfect grammar/capitalization if his style is relaxed
+  - Flow and vibe > grammatical perfection (e.g., "am arbeiten" not "am Arbeiten" if that's his style)
+  - Use his vocabulary choices ("supi", "mega geile", "gönnen", "in the hood" etc.)
+- **All other users (including Simon):** Clean verbatim with grammar/punctuation corrections only. NO style matching.
+- NO bold, italics, or markdown formatting
+
+### In Private/Direct Chats (1-on-1)
 
 When user provides transcribed audio (or text to format), send TWO separate Telegram messages using the `message` tool:
 
